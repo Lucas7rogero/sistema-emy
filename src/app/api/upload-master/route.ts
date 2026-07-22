@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+
+const LOCAL_MASTER_PATH = path.join(process.cwd(), 'master.xlsx');
+const USE_LOCAL_STORAGE = !process.env.BLOB_READ_WRITE_TOKEN;
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +25,16 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // Usar armazenamento local se não tiver token Blob configurado
+    if (USE_LOCAL_STORAGE) {
+      fs.writeFileSync(LOCAL_MASTER_PATH, buffer);
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Arquivo mestre salvo localmente com sucesso' 
+      });
+    }
+
+    // Usar Blob Storage em produção
     const blob = await put('master.xlsx', buffer, {
       access: 'public',
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

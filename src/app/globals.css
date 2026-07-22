@@ -25,3 +25,9 @@ body {
     text-wrap: balance;
   }
 }
+
+.emy-toast {
+  border-radius: 14px !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  box-shadow: 0 14px 35px rgba(15, 42, 67, 0.18) !important;
+}
