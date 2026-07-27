@@ -196,6 +196,8 @@ export async function categorizeTransactions(
     descricao: string;
     categoria: string;
     subcategoria: string;
+    responsavel?: string;
+    forma_pgto?: string;
   }> = [],
 ): Promise<CategorizedTransaction[]> {
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -233,15 +235,20 @@ ${JSON.stringify(categoryObj, null, 2)}`;
   prompt += `\n\nBASE DE APRENDIZADO — CONTROLE_DE_DESPESAS_MENSAIS.XLSX:
 Esta é a base histórica real do usuário. Ela tem prioridade sobre qualquer exemplo genérico da internet.
 Use a descrição do lançamento e procure o estabelecimento, pessoa, serviço ou palavra-chave mais parecido nos exemplos históricos.
-Quando houver correspondência exata ou muito próxima, copie exatamente CATEGORIA e SUBCATEGORIA daquele exemplo.
+Quando houver correspondência exata ou muito próxima, copie exatamente CATEGORIA, SUBCATEGORIA, RESPONSÁVEL e FORMA DE PGTO daquele exemplo.
 Não misture subcategorias de categorias diferentes. Toda combinação precisa existir na lista fechada acima.
 Descrições de transferências/Pix devem ser classificadas pelo beneficiário quando houver um exemplo histórico do mesmo beneficiário.
 Lançamentos recorrentes (condomínio, contas, mensalidades, escolas, clubes e serviços) devem manter o padrão histórico da planilha.
 Valores positivos podem ser recebimentos e valores negativos normalmente são despesas; use o contexto e os exemplos, mas nunca altere DATA ou VALOR.
-Se não houver evidência suficiente nos exemplos, use COMPLETAR somente para CATEGORIA e SUBCATEGORIA.
+Se não houver evidência suficiente nos exemplos, use COMPLETAR.
 
 HISTÓRICO REAL DE DESCRIÇÕES → CLASSIFICAÇÃO:
-${realExamples.map((ex) => `- ${ex.descricao} => ${ex.categoria} | ${ex.subcategoria}`).join("\n")}`;
+${realExamples.map((ex) => {
+  let exampleStr = `- ${ex.descricao} => ${ex.categoria} | ${ex.subcategoria}`;
+  if (ex.responsavel) exampleStr += ` | Responsável: ${ex.responsavel}`;
+  if (ex.forma_pgto) exampleStr += ` | Forma pgto: ${ex.forma_pgto}`;
+  return exampleStr;
+}).join("\n")}`;
 
   prompt += `\n\nTRANSAÇÕES PARA CATEGORIZAR (analise cada descrição):
 ${JSON.stringify(rawTransactions, null, 2)}`;

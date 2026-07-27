@@ -2,7 +2,7 @@ const ExcelJS = require('exceljs');
 
 async function analyzeExcel() {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile('./Controle_de_despesas_mensais.xlsx');
+  await workbook.xlsx.readFile('./Controle de despesas mensais.xlsx');
 
   console.log('=== ABAS DO EXCEL ===');
   workbook.eachSheet((worksheet, sheetId) => {

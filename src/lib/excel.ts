@@ -130,7 +130,10 @@ export function extractUniqueValues(
     if (rowNumber > 1) {
       const cell = row.getCell(columnIndex);
       if (cell.value) {
-        values.add(cell.value.toString().trim());
+        // Normalizar para Title Case para evitar duplicatas de case
+        const value = cell.value.toString().trim();
+        const normalized = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+        values.add(normalized);
       }
     }
   });
@@ -291,7 +294,13 @@ export function extractRealExamples(
   workbook: ExcelJS.Workbook,
   sheetName: string,
   maxExamples: number = 1200,
-): Array<{ descricao: string; categoria: string; subcategoria: string }> {
+): Array<{ 
+  descricao: string; 
+  categoria: string; 
+  subcategoria: string;
+  responsavel?: string;
+  forma_pgto?: string;
+}> {
   const worksheet = workbook.getWorksheet(sheetName);
   if (!worksheet) return [];
 
@@ -299,11 +308,15 @@ export function extractRealExamples(
     descricao: string;
     categoria: string;
     subcategoria: string;
+    responsavel?: string;
+    forma_pgto?: string;
   }> = [];
 
   let descCol = -1,
     catCol = -1,
-    subCol = -1;
+    subCol = -1,
+    respCol = -1,
+    pgtoCol = -1;
 
   // Encontrar colunas
   worksheet.getRow(1).eachCell((cell, colNumber) => {
@@ -311,6 +324,8 @@ export function extractRealExamples(
     if (val === "DESCRIÇÃO" || val === "DESCRICAO") descCol = colNumber;
     if (val === "CATEGORIA") catCol = colNumber;
     if (val === "SUBCATEGORIA") subCol = colNumber;
+    if (val === "RESPONSÁVEL") respCol = colNumber;
+    if (val === "FORMA DE PGTO") pgtoCol = colNumber;
   });
 
   if (descCol === -1 || catCol === -1 || subCol === -1) return [];
@@ -324,6 +339,8 @@ export function extractRealExamples(
       const desc = row.getCell(descCol).value?.toString().trim();
       const cat = row.getCell(catCol).value?.toString().trim();
       const sub = row.getCell(subCol).value?.toString().trim();
+      const resp = respCol > 0 ? row.getCell(respCol).value?.toString().trim() : undefined;
+      const pgto = pgtoCol > 0 ? row.getCell(pgtoCol).value?.toString().trim() : undefined;
 
       if (desc && cat && sub && desc.length > 3) {
         const key = desc
@@ -337,6 +354,8 @@ export function extractRealExamples(
             descricao: desc,
             categoria: cat,
             subcategoria: sub,
+            responsavel: resp,
+            forma_pgto: pgto,
           });
         }
       }
