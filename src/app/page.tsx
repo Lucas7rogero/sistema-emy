@@ -452,10 +452,10 @@ export default function Home() {
                               e.target.value,
                             )
                           }
-                          className={`w-full px-2 py-1 border rounded ${
+                          className={`w-full px-2 py-1 border rounded text-gray-900 ${
                             isCompleteField(transaction.data)
                               ? "border-red-500 bg-red-50"
-                              : "border-gray-300"
+                              : "border-gray-300 bg-white"
                           }`}
                         />
                       </td>
@@ -470,10 +470,10 @@ export default function Home() {
                               e.target.value,
                             )
                           }
-                          className={`w-full px-2 py-1 border rounded ${
+                          className={`w-full px-2 py-1 border rounded text-gray-900 ${
                             isCompleteField(transaction.categoria)
                               ? "border-red-500 bg-red-50"
-                              : "border-gray-300"
+                              : "border-gray-300 bg-white"
                           }`}
                         />
                       </td>
@@ -488,10 +488,10 @@ export default function Home() {
                               e.target.value,
                             )
                           }
-                          className={`w-full px-2 py-1 border rounded ${
+                          className={`w-full px-2 py-1 border rounded text-gray-900 ${
                             isCompleteField(transaction.subcategoria)
                               ? "border-red-500 bg-red-50"
-                              : "border-gray-300"
+                              : "border-gray-300 bg-white"
                           }`}
                         />
                       </td>
@@ -506,10 +506,10 @@ export default function Home() {
                               e.target.value,
                             )
                           }
-                          className={`w-full px-2 py-1 border rounded ${
+                          className={`w-full px-2 py-1 border rounded text-gray-900 ${
                             isCompleteField(transaction.descricao)
                               ? "border-red-500 bg-red-50"
-                              : "border-gray-300"
+                              : "border-gray-300 bg-white"
                           }`}
                         />
                       </td>
@@ -526,10 +526,10 @@ export default function Home() {
                                   e.target.value,
                                 )
                               }
-                              className={`w-full px-2 py-1 border rounded ${
+                              className={`w-full px-2 py-1 border rounded text-gray-900 ${
                                 isCompleteField(transaction.responsavel)
                                   ? "border-red-500 bg-red-50"
-                                  : "border-gray-300"
+                                  : "border-gray-300 bg-white"
                               }`}
                             />
                           </td>
@@ -544,10 +544,10 @@ export default function Home() {
                                   e.target.value,
                                 )
                               }
-                              className={`w-full px-2 py-1 border rounded ${
+                              className={`w-full px-2 py-1 border rounded text-gray-900 ${
                                 isCompleteField(transaction.forma_pgto)
                                   ? "border-red-500 bg-red-50"
-                                  : "border-gray-300"
+                                  : "border-gray-300 bg-white"
                               }`}
                             />
                           </td>
@@ -585,7 +585,7 @@ export default function Home() {
                               parseFloat(e.target.value) || 0,
                             )
                           }
-                          className="w-full px-2 py-1 border border-gray-300 rounded"
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-gray-900 bg-white"
                         />
                       </td>
                       <td className="px-4 py-2">
