@@ -270,7 +270,18 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 relative">
+      {/* Loading Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mb-4"></div>
+            <p className="text-lg font-medium text-gray-900">Processando extratos com IA...</p>
+            <p className="text-sm text-gray-600 mt-2">Isso pode levar alguns segundos</p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">
           Sistema Emy - Processamento de Extratos
