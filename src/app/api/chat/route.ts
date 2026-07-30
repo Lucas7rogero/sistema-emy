@@ -78,8 +78,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 });
     }
 
+    console.log('Processando mensagem:', message, 'sheetType:', sheetType);
+
     // Save user message to chat history
-    addChatMessage({ role: 'user', content: message });
+    try {
+      addChatMessage({ role: 'user', content: message });
+    } catch (dbError) {
+      console.error('Erro ao salvar mensagem no banco:', dbError);
+      // Continue even if database fails
+    }
 
     // Try to parse a learning rule from the message
     const parsedRule = parseLearningRule(message);
@@ -89,36 +96,68 @@ export async function POST(request: NextRequest) {
     if (parsedRule) {
       // User is teaching a new rule
       parsedRule.sheet_type = sheetType;
-      // Convert ParsedRule to LearningRule (subcategory vs subcategoria)
-      addLearningRule({
-        keyword: parsedRule.keyword,
-        category: parsedRule.category,
-        subcategoria: parsedRule.subcategoria,
-        responsavel: parsedRule.responsavel,
-        forma_pgto: parsedRule.forma_pgto,
-        sheet_type: parsedRule.sheet_type,
-      });
+      console.log('Regra detectada:', parsedRule);
       
-      const rules = getLearningRules(sheetType);
-      aiResponse = `Entendi! Salvei a regra:\n\n` +
-        `📝 Palavra-chave: "${parsedRule.keyword}"\n` +
-        `📁 Categoria: "${parsedRule.category}"\n` +
-        `📂 Subcategoria: "${parsedRule.subcategoria}"\n` +
-        (parsedRule.responsavel ? `👤 Responsável: "${parsedRule.responsavel}"\n` : '') +
-        (parsedRule.forma_pgto ? `💳 Forma de pgto: "${parsedRule.forma_pgto}"\n` : '') +
-        `📊 Aba: "${parsedRule.sheet_type}"\n\n` +
-        `Agora quando aparecer "${parsedRule.keyword}" nos extratos, vou usar essa classificação automaticamente.\n\n` +
-        `Você tem ${rules.length} regra(s) salva(s) no total. Quer adicionar mais alguma?`;
+      try {
+        // Convert ParsedRule to LearningRule (subcategory vs subcategoria)
+        addLearningRule({
+          keyword: parsedRule.keyword,
+          category: parsedRule.category,
+          subcategoria: parsedRule.subcategoria,
+          responsavel: parsedRule.responsavel,
+          forma_pgto: parsedRule.forma_pgto,
+          sheet_type: parsedRule.sheet_type,
+        });
+      } catch (dbError) {
+        console.error('Erro ao salvar regra no banco:', dbError);
+        // Continue with response even if database fails
+      }
+      
+      try {
+        const rules = getLearningRules(sheetType);
+        aiResponse = `Entendi! Salvei a regra:\n\n` +
+          `📝 Palavra-chave: "${parsedRule.keyword}"\n` +
+          `📁 Categoria: "${parsedRule.category}"\n` +
+          `📂 Subcategoria: "${parsedRule.subcategoria}"\n` +
+          (parsedRule.responsavel ? `👤 Responsável: "${parsedRule.responsavel}"\n` : '') +
+          (parsedRule.forma_pgto ? `💳 Forma de pgto: "${parsedRule.forma_pgto}"\n` : '') +
+          `📊 Aba: "${parsedRule.sheet_type}"\n\n` +
+          `Agora quando aparecer "${parsedRule.keyword}" nos extratos, vou usar essa classificação automaticamente.\n\n` +
+          `Você tem ${rules.length} regra(s) salva(s) no total. Quer adicionar mais alguma?`;
+      } catch (dbError) {
+        console.error('Erro ao buscar regras:', dbError);
+        aiResponse = `Entendi! Salvei a regra:\n\n` +
+          `📝 Palavra-chave: "${parsedRule.keyword}"\n` +
+          `📁 Categoria: "${parsedRule.category}"\n` +
+          `📂 Subcategoria: "${parsedRule.subcategoria}"\n` +
+          (parsedRule.responsavel ? `👤 Responsável: "${parsedRule.responsavel}"\n` : '') +
+          (parsedRule.forma_pgto ? `💳 Forma de pgto: "${parsedRule.forma_pgto}"\n` : '') +
+          `📊 Aba: "${parsedRule.sheet_type}"\n\n` +
+          `Agora quando aparecer "${parsedRule.keyword}" nos extratos, vou usar essa classificação automaticamente.`;
+      }
     } else {
       // General chat - use Gemini
+      if (!process.env.GEMINI_API_KEY) {
+        return NextResponse.json({ 
+          error: 'Chave de API do Gemini não configurada',
+          details: 'Configure a variável de ambiente GEMINI_API_KEY'
+        }, { status: 500 });
+      }
+
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
-      const rules = getLearningRules(sheetType);
-      const rulesContext = rules.length > 0 
-        ? `\n\nRegras de aprendizado atuais:\n${rules.map(r => 
-          `- "${r.keyword}" → ${r.category} | ${r.subcategoria}`
-        ).join('\n')}`
-        : '\n\nNenhuma regra de aprendizado salva ainda.';
+      let rulesContext = '';
+      try {
+        const rules = getLearningRules(sheetType);
+        rulesContext = rules.length > 0 
+          ? `\n\nRegras de aprendizado atuais:\n${rules.map(r => 
+            `- "${r.keyword}" → ${r.category} | ${r.subcategoria}`
+          ).join('\n')}`
+          : '\n\nNenhuma regra de aprendizado salva ainda.';
+      } catch (dbError) {
+        console.error('Erro ao buscar regras:', dbError);
+        rulesContext = '\n\nNão foi possível carregar as regras de aprendizado.';
+      }
 
       const prompt = `Você é um assistente financeiro que ajuda o usuário a categorizar despesas. 
 O usuário pode te ensinar regras de categorização dizendo coisas como "quando aparecer Lelo, categoria Casa 1 Baroneza, subcategoria Condomínio".
@@ -136,7 +175,12 @@ Mensagem do usuário: ${message}`;
     }
 
     // Save AI response to chat history
-    addChatMessage({ role: 'assistant', content: aiResponse });
+    try {
+      addChatMessage({ role: 'assistant', content: aiResponse });
+    } catch (dbError) {
+      console.error('Erro ao salvar resposta no banco:', dbError);
+      // Continue even if database fails
+    }
 
     return NextResponse.json({
       success: true,
