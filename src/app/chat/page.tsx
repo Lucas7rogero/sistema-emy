@@ -2,22 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
+import { LearningRule } from "@/lib/db";
 
 interface ChatMessage {
   id?: number;
   role: 'user' | 'assistant';
   content: string;
   created_at?: string;
-}
-
-interface LearningRule {
-  id?: number;
-  keyword: string;
-  category: string;
-  subcategory: string;
-  responsavel?: string;
-  forma_pgto?: string;
-  sheet_type: string;
 }
 
 export default function ChatPage() {
@@ -208,25 +199,35 @@ export default function ChatPage() {
                   </p>
                 ) : (
                   rules.map((rule) => (
-                    <div key={rule.id} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                    <div key={rule.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-900 text-sm truncate">
-                            "{rule.keyword}"
-                          </p>
-                          <p className="text-xs text-slate-600 mt-1">
-                            {rule.category} → {rule.subcategory}
-                          </p>
-                          {rule.responsavel && (
-                            <p className="text-xs text-slate-500">👤 {rule.responsavel}</p>
-                          )}
-                          {rule.forma_pgto && (
-                            <p className="text-xs text-slate-500">💳 {rule.forma_pgto}</p>
-                          )}
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                              {rule.sheet_type}
+                            </span>
+                            <p className="font-semibold text-slate-900 text-sm truncate">
+                              "{rule.keyword}"
+                            </p>
+                          </div>
+                          <div className="text-xs text-slate-700 mt-1 space-y-0.5">
+                            <p>
+                              <span className="font-medium">📁 {rule.category}</span>
+                              <span className="text-slate-400 mx-1">→</span>
+                              <span>📂 {rule.subcategoria}</span>
+                            </p>
+                            {rule.responsavel && (
+                              <p className="text-slate-600">👤 {rule.responsavel}</p>
+                            )}
+                            {rule.forma_pgto && (
+                              <p className="text-slate-600">💳 {rule.forma_pgto}</p>
+                            )}
+                          </div>
                         </div>
                         <button
                           onClick={() => rule.id && deleteRule(rule.id)}
-                          className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
+                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-100 rounded-lg transition-colors"
+                          title="Remover regra"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
