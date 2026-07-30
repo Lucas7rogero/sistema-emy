@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { RawTransaction } from "./fileParser";
+import { findMatchingRule, getLearningRules } from "./db";
 
 export interface CategorizedTransaction {
   data: string;
@@ -200,6 +201,49 @@ export async function categorizeTransactions(
     forma_pgto?: string;
   }> = [],
 ): Promise<CategorizedTransaction[]> {
+  // First, check for learning rules from the database
+  const learningRules = getLearningRules(sheetType);
+  
+  // Process transactions with learning rules priority
+  const transactionsToProcess: RawTransaction[] = [];
+  const categorizedByRules: CategorizedTransaction[] = [];
+
+  for (const raw of rawTransactions) {
+    const description = normalizeText(raw.descricao);
+    let matchedRule = null;
+
+    // Check each learning rule for a match
+    for (const rule of learningRules) {
+      const ruleKeyword = normalizeText(rule.keyword);
+      if (description.includes(ruleKeyword) || ruleKeyword.includes(description)) {
+        matchedRule = rule;
+        break;
+      }
+    }
+
+    if (matchedRule) {
+      // Use the learning rule categorization
+      categorizedByRules.push({
+        data: raw.data,
+        categoria: matchedRule.category,
+        subcategoria: matchedRule.subcategoria,
+        descricao: raw.descricao.length > 80 ? raw.descricao.substring(0, 80) : raw.descricao,
+        valor: raw.valor,
+        ...(matchedRule.responsavel && { responsavel: matchedRule.responsavel }),
+        ...(matchedRule.forma_pgto && { forma_pgto: matchedRule.forma_pgto }),
+      });
+    } else {
+      // No rule matched, process with Gemini
+      transactionsToProcess.push(raw);
+    }
+  }
+
+  // If all transactions were categorized by rules, return immediately
+  if (transactionsToProcess.length === 0) {
+    return categorizedByRules;
+  }
+
+  // Process remaining transactions with Gemini
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   // Converter Map para objeto JSON
@@ -207,6 +251,17 @@ export async function categorizeTransactions(
   categoryMapping.forEach((subs, cat) => {
     categoryObj[cat] = subs;
   });
+
+  // Add learning rules to the prompt context
+  const learningRulesContext = learningRules.length > 0
+    ? `\n\nREGRAS DE APRENDIZADO DO USUÁRIO (PRIORIDADE MÁXIMA):\n` +
+      `Estas regras foram ensinadas pelo usuário e têm PRIORIDADE ABSOLUTA sobre qualquer outra lógica:\n` +
+      learningRules.map(r => 
+        `- Quando aparecer "${r.keyword}" → Categoria: "${r.category}", Subcategoria: "${r.subcategoria}"` +
+        (r.responsavel ? `, Responsável: "${r.responsavel}"` : '') +
+        (r.forma_pgto ? `, Forma de pgto: "${r.forma_pgto}"` : '')
+      ).join('\n')
+    : '';
 
   // Construir prompt melhorado e mais específico
   let prompt = `Você é um assistente financeiro especialista em categorização de despesas pessoais. Sua tarefa é analisar as descrições das transações bancárias e inferir a categoria e subcategoria correta baseando-se no vocabulário fechado do Excel mestre.
@@ -222,7 +277,7 @@ REGRAS OBRIGATÓRIAS - LEIA COM ATENÇÃO:
 7. RESPONSÁVEL e FORMA DE PGTO: Use apenas valores da lista fornecida.
 
 CATEGORIAS E SUBCATEGORIAS VÁLIDAS (use EXATAMENTE estes valores - memorize esta lista):
-${JSON.stringify(categoryObj, null, 2)}`;
+${JSON.stringify(categoryObj, null, 2)}${learningRulesContext}`;
 
   if (validResponsaveis.length > 0) {
     prompt += `\n\nRESPONSÁVEIS VÁLIDOS (use exatamente): ${JSON.stringify(validResponsaveis)}`;
@@ -251,7 +306,7 @@ ${realExamples.map((ex) => {
 }).join("\n")}`;
 
   prompt += `\n\nTRANSAÇÕES PARA CATEGORIZAR (analise cada descrição):
-${JSON.stringify(rawTransactions, null, 2)}`;
+${JSON.stringify(transactionsToProcess, null, 2)}`;
 
   // Definir campos esperados baseado na aba
   const hasResponsavel =
@@ -355,16 +410,19 @@ Responda apenas com um JSON array, um objeto por transação, com as chaves: dat
 
       return t;
     });
+
+    // Combine rule-categorized transactions with Gemini-categorized ones
+    return [...categorizedByRules, ...categorized];
   } catch (error) {
     console.error("Erro ao categorizar transações com Gemini:", error);
-    return categorizeLocally(
-      rawTransactions,
-      categoryMapping,
-      validResponsaveis,
-      validFormasPgto,
-      sheetType,
-      realExamples,
-    );
+    
+    // If Gemini fails, return the rule-categorized transactions at least
+    if (categorizedByRules.length > 0) {
+      console.log("Retornando apenas transações categorizadas por regras devido ao erro do Gemini");
+      return categorizedByRules;
+    }
+    
+    throw error;
   }
 }
 
