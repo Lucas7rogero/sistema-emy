@@ -70,6 +70,10 @@ export default function ChatPage() {
       const data = await response.json();
 
       if (data.success) {
+        // Add user message and AI response directly to state
+        setMessages(prev => [...prev, { role: 'user', content: userMessage }, { role: 'assistant', content: data.response }]);
+        
+        // Also load from database to sync
         await loadChatHistory();
         
         if (data.ruleLearned) {
